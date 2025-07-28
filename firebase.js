@@ -77,6 +77,29 @@ const DatabaseHelpers = {
         });
     },
 
+    // Remove minus point from a specific team
+    removeMinusPoint: (teamId) => {
+        const teamRef = firebase.database().ref(`teams/${teamId}`);
+        return teamRef.transaction((currentData) => {
+            if (currentData === null) {
+                return currentData; // Abort the transaction
+            }
+            
+            if (currentData.eliminated || currentData.minusCount <= 0) {
+                return; // Abort - team eliminated or no points to remove
+            }
+
+            const newMinusCount = Math.max(0, (currentData.minusCount || 0) - 1);
+            const updates = {
+                ...currentData,
+                minusCount: newMinusCount,
+                lastUpdated: Date.now()
+            };
+
+            return updates;
+        });
+    },
+
     // Reset all teams
     resetAllTeams: () => {
         const updates = {};
@@ -154,6 +177,16 @@ const DatabaseHelpers = {
             timestamp: Date.now(),
             userAgent: navigator.userAgent.substring(0, 100) // Limited for privacy
         });
+    },
+
+    // Restore eliminated team (admin function)
+    restoreTeam: (teamId) => {
+        const updates = {};
+        updates[`teams/${teamId}/eliminated`] = false;
+        updates[`teams/${teamId}/eliminatedAt`] = null;
+        updates[`teams/${teamId}/lastUpdated`] = Date.now();
+        
+        return firebase.database().ref().update(updates);
     }
 };
 

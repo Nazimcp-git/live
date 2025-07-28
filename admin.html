@@ -159,6 +159,19 @@
             firebase.database().ref().update(updates);
         }
 
+        function removeMinusPoint(teamId) {
+            const team = teams[teamId];
+            if (!team || team.minusCount <= 0 || team.eliminated) return;
+
+            const newMinusCount = team.minusCount - 1;
+            const updates = {
+                [`teams/${teamId}/minusCount`]: newMinusCount,
+                [`teams/${teamId}/lastUpdated`]: Date.now()
+            };
+
+            firebase.database().ref().update(updates);
+        }
+
         function resetAllTeams() {
             const updates = {};
             Object.keys(teams).forEach(teamId => {
@@ -191,7 +204,7 @@
 
                 teamCard.innerHTML = `
                     <div class="team-header">
-                        <h3 class="team-name">Team ${teamId}</h3>
+                        <h3 class="team-name">Team ${team.name}</h3>
                         ${team.eliminated ? '<span class="eliminated-badge">ELIMINATED</span>' : ''}
                     </div>
                     <div class="minus-points">
@@ -201,13 +214,22 @@
                         ${team.eliminated ? 'Eliminated' : `${team.minusCount}/3 minus points`}
                     </div>
                     <div class="admin-actions">
-                        <button 
-                            class="minus-button ${!canAddMinus ? 'disabled' : ''}" 
-                            ${!canAddMinus ? 'disabled' : ''}
-                            onclick="handleMinusClick('${teamId}')"
-                        >
-                            −1 Point
-                        </button>
+                        <div class="action-buttons">
+                            <button 
+                                class="minus-button ${!canAddMinus ? 'disabled' : ''}" 
+                                ${!canAddMinus ? 'disabled' : ''}
+                                onclick="handleMinusClick('${teamId}')"
+                            >
+                                −1 Point
+                            </button>
+                            <button 
+                                class="plus-button ${team.minusCount <= 0 || team.eliminated ? 'disabled' : ''}" 
+                                ${team.minusCount <= 0 || team.eliminated ? 'disabled' : ''}
+                                onclick="handlePlusClick('${teamId}')"
+                            >
+                                +1 Point
+                            </button>
+                        </div>
                         <div class="team-meta">
                             Last updated: ${team.lastUpdated ? new Date(team.lastUpdated).toLocaleTimeString() : 'Never'}
                         </div>
@@ -243,8 +265,21 @@
             });
         }
 
-        // Make function global for onclick
+        // Handle plus click (remove minus point) with confirmation
+        function handlePlusClick(teamId) {
+            const team = teams[teamId];
+            if (!team || team.minusCount <= 0 || team.eliminated) return;
+
+            const message = `Remove minus point from Team ${teamId}? (${team.minusCount - 1}/3)`;
+
+            showConfirmation(message, () => {
+                removeMinusPoint(teamId);
+            });
+        }
+
+        // Make functions global for onclick
         window.handleMinusClick = handleMinusClick;
+        window.handlePlusClick = handlePlusClick;
 
         // Initialize Firebase listeners
         initializeApp();

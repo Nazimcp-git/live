@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Elimination - Live Board</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">🏆 Team Elimination Board</h1>
+            <div class="status-bar">
+                <span id="activeCount" class="status-item">26 Teams Active</span>
+                <span id="eliminatedCount" class="status-item">0 Eliminated</span>
+                <button id="darkModeToggle" class="dark-mode-toggle">🌙</button>
+            </div>
+        </header>
+
+        <div id="teamsGrid" class="teams-grid">
+            <!-- Teams will be dynamically generated here -->
+        </div>
+
+        <div class="footer">
+            <p>Live updates powered by Firebase • Status updates in real-time</p>
+        </div>
+    </div>
+
+    <!-- Confetti Container -->
+    <div id="confettiContainer" class="confetti-container"></div>
+
+    <!-- Audio -->
+    <audio id="eliminationSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBzmLzPhygyMWEATIA" type="audio/wav">
+    </audio>
+
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-database.js"></script>
+    <script src="firebase.js"></script>
+    <script>
+        // DOM Elements
+        const teamsGrid = document.getElementById('teamsGrid');
+        const activeCount = document.getElementById('activeCount');
+        const eliminatedCount = document.getElementById('eliminatedCount');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const confettiContainer = document.getElementById('confettiContainer');
+        const eliminationSound = document.getElementById('eliminationSound');
+
+        // State
+        let teams = {};
+        let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+        // Initialize dark mode
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.textContent = '☀️';
+        }
+
+        // Dark mode toggle
+        darkModeToggle.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode');
+            darkModeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDarkMode);
+        });
+
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti-piece';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                confettiContainer.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+
+        // Render teams
+        function renderTeams() {
+            teamsGrid.innerHTML = '';
+            let activeTeams = 0;
+            let eliminatedTeams = 0;
+
+            Object.entries(teams).forEach(([teamId, team]) => {
+                const teamCard = document.createElement('div');
+                teamCard.className = `team-card ${team.eliminated ? 'eliminated' : ''}`;
+                teamCard.id = `team-${teamId}`;
+
+                const minusPoints = Array(3).fill(0).map((_, i) => 
+                    `<span class="minus-point ${i < team.minusCount ? 'active' : ''}">${i < team.minusCount ? '✕' : '○'}</span>`
+                ).join('');
+
+                teamCard.innerHTML = `
+                    <div class="team-header">
+                        <h3 class="team-name">Team ${teamId}</h3>
+                        ${team.eliminated ? '<span class="eliminated-badge">ELIMINATED</span>' : ''}
+                    </div>
+                    <div class="minus-points">
+                        ${minusPoints}
+                    </div>
+                    <div class="team-status">
+                        ${team.eliminated ? 'Out of competition' : `${3 - team.minusCount} strikes remaining`}
+                    </div>
+                `;
+
+                teamsGrid.appendChild(teamCard);
+
+                if (team.eliminated) {
+                    eliminatedTeams++;
+                } else {
+                    activeTeams++;
+                }
+            });
+
+            // Update counters
+            activeCount.textContent = `${activeTeams} Teams Active`;
+            eliminatedCount.textContent = `${eliminatedTeams} Eliminated`;
+        }
+
+        // Animate team card on minus point
+        function animateMinusPoint(teamId) {
+            const teamCard = document.getElementById(`team-${teamId}`);
+            if (teamCard) {
+                teamCard.classList.add('shake');
+                setTimeout(() => {
+                    teamCard.classList.remove('shake');
+                }, 600);
+            }
+        }
+
+        // Animate elimination
+        function animateElimination(teamId) {
+            const teamCard = document.getElementById(`team-${teamId}`);
+            if (teamCard) {
+                teamCard.classList.add('eliminating');
+                setTimeout(() => {
+                    teamCard.classList.remove('eliminating');
+                    teamCard.classList.add('eliminated');
+                    // Play sound and confetti
+                    eliminationSound.play().catch(() => {});
+                    createConfetti();
+                }, 500);
+            }
+        }
+
+        // Initialize Firebase listeners
+        initializeApp();
+        
+        // Listen for team data changes
+        const teamsRef = firebase.database().ref('teams');
+        teamsRef.on('value', (snapshot) => {
+            const newTeams = snapshot.val() || {};
+            
+            // Check for new eliminations
+            Object.keys(newTeams).forEach(teamId => {
+                const oldTeam = teams[teamId];
+                const newTeam = newTeams[teamId];
+                
+                if (oldTeam && newTeam) {
+                    // Check if minus count increased
+                    if (newTeam.minusCount > oldTeam.minusCount) {
+                        animateMinusPoint(teamId);
+                    }
+                    
+                    // Check if team was eliminated
+                    if (!oldTeam.eliminated && newTeam.eliminated) {
+                        setTimeout(() => {
+                            animateElimination(teamId);
+                        }, 300);
+                    }
+                }
+            });
+            
+            teams = newTeams;
+            renderTeams();
+        });
+
+        // Initialize teams if database is empty
+        teamsRef.once('value', (snapshot) => {
+            if (!snapshot.exists()) {
+                const initialTeams = {};
+                for (let i = 0; i < 26; i++) {
+                    const teamId = String.fromCharCode(65 + i);
+                    initialTeams[teamId] = {
+                        name: `Team ${teamId}`,
+                        minusCount: 0,
+                        eliminated: false,
+                        createdAt: Date.now()
+                    };
+                }
+                teamsRef.set(initialTeams);
+            }
+        });
+    </script>
+</body>
+</html>

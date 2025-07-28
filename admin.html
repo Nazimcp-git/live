@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Elimination - Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">⚡ Admin Control Panel</h1>
+            <div class="status-bar">
+                <span id="activeCount" class="status-item">26 Teams Active</span>
+                <span id="eliminatedCount" class="status-item">0 Eliminated</span>
+                <button id="darkModeToggle" class="dark-mode-toggle">🌙</button>
+                <button id="resetButton" class="reset-button">🔄 Reset All</button>
+            </div>
+        </header>
+
+        <div class="admin-controls">
+            <div class="control-group">
+                <button id="viewPublicBoard" class="secondary-button">📺 View Public Board</button>
+                <div class="search-box">
+                    <input type="text" id="teamSearch" placeholder="Search teams..." />
+                </div>
+            </div>
+        </div>
+
+        <div id="teamsGrid" class="teams-grid admin-grid">
+            <!-- Teams will be dynamically generated here -->
+        </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirmModal" class="modal">
+            <div class="modal-content">
+                <h3>Confirm Action</h3>
+                <p id="confirmMessage"></p>
+                <div class="modal-actions">
+                    <button id="confirmYes" class="primary-button">Yes</button>
+                    <button id="confirmNo" class="secondary-button">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Admin Panel • All actions are logged and synced in real-time</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-database.js"></script>
+    <script src="firebase.js"></script>
+    <script>
+        // DOM Elements
+        const teamsGrid = document.getElementById('teamsGrid');
+        const activeCount = document.getElementById('activeCount');
+        const eliminatedCount = document.getElementById('eliminatedCount');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const resetButton = document.getElementById('resetButton');
+        const viewPublicBoard = document.getElementById('viewPublicBoard');
+        const teamSearch = document.getElementById('teamSearch');
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmYes = document.getElementById('confirmYes');
+        const confirmNo = document.getElementById('confirmNo');
+
+        // State
+        let teams = {};
+        let filteredTeams = {};
+        let isDarkMode = localStorage.getItem('darkMode') === 'true';
+        let pendingAction = null;
+
+        // Initialize dark mode
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.textContent = '☀️';
+        }
+
+        // Event listeners
+        darkModeToggle.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode');
+            darkModeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDarkMode);
+        });
+
+        viewPublicBoard.addEventListener('click', () => {
+            window.open('index.html', '_blank');
+        });
+
+        teamSearch.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            if (searchTerm) {
+                filteredTeams = Object.fromEntries(
+                    Object.entries(teams).filter(([teamId, team]) => 
+                        teamId.toLowerCase().includes(searchTerm) || 
+                        team.name.toLowerCase().includes(searchTerm)
+                    )
+                );
+            } else {
+                filteredTeams = teams;
+            }
+            renderTeams();
+        });
+
+        resetButton.addEventListener('click', () => {
+            showConfirmation('Are you sure you want to reset all teams? This will set all minus counts to 0 and restore eliminated teams.', () => {
+                resetAllTeams();
+            });
+        });
+
+        // Modal functions
+        function showConfirmation(message, onConfirm) {
+            confirmMessage.textContent = message;
+            confirmModal.style.display = 'flex';
+            pendingAction = onConfirm;
+        }
+
+        function hideConfirmation() {
+            confirmModal.style.display = 'none';
+            pendingAction = null;
+        }
+
+        confirmYes.addEventListener('click', () => {
+            if (pendingAction) {
+                pendingAction();
+            }
+            hideConfirmation();
+        });
+
+        confirmNo.addEventListener('click', hideConfirmation);
+
+        // Close modal on outside click
+        confirmModal.addEventListener('click', (e) => {
+            if (e.target === confirmModal) {
+                hideConfirmation();
+            }
+        });
+
+        // Firebase functions
+        function addMinusPoint(teamId) {
+            const team = teams[teamId];
+            if (!team || team.eliminated || team.minusCount >= 3) return;
+
+            const newMinusCount = team.minusCount + 1;
+            const updates = {
+                [`teams/${teamId}/minusCount`]: newMinusCount,
+                [`teams/${teamId}/lastUpdated`]: Date.now()
+            };
+
+            if (newMinusCount >= 3) {
+                updates[`teams/${teamId}/eliminated`] = true;
+                updates[`teams/${teamId}/eliminatedAt`] = Date.now();
+            }
+
+            firebase.database().ref().update(updates);
+        }
+
+        function resetAllTeams() {
+            const updates = {};
+            Object.keys(teams).forEach(teamId => {
+                updates[`teams/${teamId}/minusCount`] = 0;
+                updates[`teams/${teamId}/eliminated`] = false;
+                updates[`teams/${teamId}/lastUpdated`] = Date.now();
+                // Remove elimination timestamp
+                updates[`teams/${teamId}/eliminatedAt`] = null;
+            });
+            firebase.database().ref().update(updates);
+        }
+
+        // Render teams
+        function renderTeams() {
+            teamsGrid.innerHTML = '';
+            let activeTeams = 0;
+            let eliminatedTeams = 0;
+
+            const teamsToShow = Object.keys(filteredTeams).length > 0 ? filteredTeams : teams;
+
+            Object.entries(teamsToShow).forEach(([teamId, team]) => {
+                const teamCard = document.createElement('div');
+                teamCard.className = `team-card admin-card ${team.eliminated ? 'eliminated' : ''}`;
+
+                const minusPoints = Array(3).fill(0).map((_, i) => 
+                    `<span class="minus-point ${i < team.minusCount ? 'active' : ''}">${i < team.minusCount ? '✕' : '○'}</span>`
+                ).join('');
+
+                const canAddMinus = !team.eliminated && team.minusCount < 3;
+
+                teamCard.innerHTML = `
+                    <div class="team-header">
+                        <h3 class="team-name">Team ${teamId}</h3>
+                        ${team.eliminated ? '<span class="eliminated-badge">ELIMINATED</span>' : ''}
+                    </div>
+                    <div class="minus-points">
+                        ${minusPoints}
+                    </div>
+                    <div class="team-status">
+                        ${team.eliminated ? 'Eliminated' : `${team.minusCount}/3 minus points`}
+                    </div>
+                    <div class="admin-actions">
+                        <button 
+                            class="minus-button ${!canAddMinus ? 'disabled' : ''}" 
+                            ${!canAddMinus ? 'disabled' : ''}
+                            onclick="handleMinusClick('${teamId}')"
+                        >
+                            −1 Point
+                        </button>
+                        <div class="team-meta">
+                            Last updated: ${team.lastUpdated ? new Date(team.lastUpdated).toLocaleTimeString() : 'Never'}
+                        </div>
+                    </div>
+                `;
+
+                teamsGrid.appendChild(teamCard);
+
+                if (team.eliminated) {
+                    eliminatedTeams++;
+                } else {
+                    activeTeams++;
+                }
+            });
+
+            // Update counters
+            activeCount.textContent = `${activeTeams} Teams Active`;
+            eliminatedCount.textContent = `${eliminatedTeams} Eliminated`;
+        }
+
+        // Handle minus click with confirmation
+        function handleMinusClick(teamId) {
+            const team = teams[teamId];
+            if (!team || team.eliminated || team.minusCount >= 3) return;
+
+            const willBeEliminated = team.minusCount + 1 >= 3;
+            const message = willBeEliminated 
+                ? `Add minus point to Team ${teamId}? This will ELIMINATE the team!`
+                : `Add minus point to Team ${teamId}? (${team.minusCount + 1}/3)`;
+
+            showConfirmation(message, () => {
+                addMinusPoint(teamId);
+            });
+        }
+
+        // Make function global for onclick
+        window.handleMinusClick = handleMinusClick;
+
+        // Initialize Firebase listeners
+        initializeApp();
+        
+        // Listen for team data changes
+        const teamsRef = firebase.database().ref('teams');
+        teamsRef.on('value', (snapshot) => {
+            teams = snapshot.val() || {};
+            filteredTeams = teams;
+            renderTeams();
+        });
+
+        // Initialize teams if database is empty
+        teamsRef.once('value', (snapshot) => {
+            if (!snapshot.exists()) {
+                const initialTeams = {};
+                for (let i = 0; i < 26; i++) {
+                    const teamId = String.fromCharCode(65 + i);
+                    initialTeams[teamId] = {
+                        name: `Team ${teamId}`,
+                        minusCount: 0,
+                        eliminated: false,
+                        createdAt: Date.now(),
+                        lastUpdated: Date.now()
+                    };
+                }
+                teamsRef.set(initialTeams);
+            }
+        });
+    </script>
+</body>
+</html>

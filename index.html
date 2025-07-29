@@ -102,8 +102,10 @@
                 teamCard.innerHTML = `
                     <div class="team-header">
                         <h3 class="team-name">Team ${team.name}</h3>
+                        
                         ${team.eliminated ? '<span class="eliminated-badge">ELIMINATED</span>' : ''}
                     </div>
+                    <span class="team-rname">${team.rname}</span>
                     <div class="minus-points">
                         ${minusPoints}
                     </div>

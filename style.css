@@ -248,12 +248,19 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0rem;
 }
 
 .team-name {
     font-size: 1.25rem;
     font-weight: 600;
+    color: var(--text-primary);
+}
+.team-rname {
+    font-size: 1rem;
+    padding: 0px;
+    margin-top: -90px;
+    font-weight: 300;
     color: var(--text-primary);
 }
 

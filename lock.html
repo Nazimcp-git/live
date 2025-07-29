@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Protected Page</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+      display: none;
+    }
+
+    .container {
+      text-align: center;
+      margin-top: 100px;
+    }
+
+    h1 {
+      color: #2c3e50;
+    }
+
+    .locked {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="content">
+    <h1>🔒 Welcome to the Secret Page</h1>
+    <p>This content is visible only to authenticated users.</p>
+  </div>
+
+  <script>
+    // Set your credentials
+    const correctUsername = "admin";
+    const correctPassword = "1234";
+
+    // Prompt user
+    const username = prompt("Enter username:");
+    const password = prompt("Enter password:");
+
+    // Authenticate
+    if (username === correctUsername && password === correctPassword) {
+      document.body.style.display = "block"; // Show content
+    } else {
+      alert("Access Denied!");
+      document.body.innerHTML = "<h1 style='color:red; text-align:center;'>Unauthorized Access</h1>";
+    }
+  </script>
+</body>
+</html>

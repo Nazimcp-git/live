@@ -54,6 +54,23 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-database.js"></script>
     <script src="firebase.js"></script>
     <script>
+    // Set your credentials
+    const correctUsername = "admin";
+    const correctPassword = "1234";
+
+    // Prompt user
+    const username = prompt("Enter username:");
+    const password = prompt("Enter password:");
+
+    // Authenticate
+    if (username === correctUsername && password === correctPassword) {
+      document.body.style.display = "block"; // Show content
+    } else {
+      alert("Access Denied!");
+      document.body.innerHTML = "<h1 style='color:red; text-align:center;'>Unauthorized Access</h1>";
+    }
+  </script>
+    <script>
         // DOM Elements
         const teamsGrid = document.getElementById('teamsGrid');
         const activeCount = document.getElementById('activeCount');

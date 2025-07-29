@@ -1,223 +1,605 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Elimination - Live Board</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-</head>
+    <title>Competition Leaderboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 255, 255, 0.1) 10px,
+                rgba(255, 255, 255, 0.1) 20px
+            );
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%); }
+            100% { transform: translateX(100%) translateY(100%); }
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 2;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+        }
+
+        .leaderboard {
+            padding: 0;
+        }
+
+        .rank-item {
+            display: flex;
+            align-items: center;
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rank-item:hover {
+            background: linear-gradient(135deg, #f8f9ff, #e8f0ff);
+            transform: translateX(5px);
+        }
+
+        .rank-item.podium {
+            background: linear-gradient(135deg, #fff3cd, #fff8dc);
+            border-left: 5px solid;
+        }
+
+        .rank-item.first {
+            border-left-color: #ffd700;
+            background: linear-gradient(135deg, #fff9c4, #ffeaa7);
+        }
+
+        .rank-item.second {
+            border-left-color: #c0c0c0;
+            background: linear-gradient(135deg, #f1f2f6, #ddd);
+        }
+
+        .rank-item.third {
+            border-left-color: #cd7f32;
+            background: linear-gradient(135deg, #f4e4bc, #deb887);
+        }
+
+        .rank-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            width: 60px;
+            text-align: center;
+            color: #333;
+        }
+
+        .podium .rank-number {
+            background: linear-gradient(45deg, #ff6b6b, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2rem;
+        }
+
+        .team-info {
+            flex: 1;
+            margin-left: 20px;
+        }
+
+        .team-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .team-institution {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+
+        .team-details {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .medal {
+            font-size: 2rem;
+            margin-right: 10px;
+        }
+
+        .elimination-time {
+            font-weight: 600;
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .score-badge {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-out {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .rank-item {
+                padding: 15px 20px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .team-details {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .medal {
+                display: none;
+            }
+        }
+    </style>
+</head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1 class="title">All Kerala Musha'ra Contest - Score Board</h1>
-            <div class="status-bar">
-                <span id="activeCount" class="status-item">26 Teams Active</span>
-                <span id="eliminatedCount" class="status-item">0 Eliminated</span>
-                <button id="darkModeToggle" class="dark-mode-toggle">🌙</button>
-            </div>
-        </header>
-
-        <div id="teamsGrid" class="teams-grid">
-            <!-- Teams will be dynamically generated here -->
+        <div class="header">
+            <h1>All Kerala Musha'ra Contest - Rank List</h1>
+            <p>Ranked by elimination time - Latest elimination wins!</p>
         </div>
-
-        <div class="footer">
-            <p>Live updates powered by Firebase • Status updates in real-time</p>
+        <div class="leaderboard" id="leaderboard">
+            <div class="loading">Loading leaderboard...</div>
         </div>
     </div>
 
-    <!-- Confetti Container -->
-    <div id="confettiContainer" class="confetti-container"></div>
-
-    <!-- Audio -->
-    <audio id="eliminationSound" preload="auto">
-        <source
-            src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBzmLzPhygyMWEATIA"
-            type="audio/wav">
-    </audio>
-
-    <!-- Firebase SDK -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-database.js"></script>
-    <script src="firebase.js"></script>
     <script>
-        // DOM Elements
-        const teamsGrid = document.getElementById('teamsGrid');
-        const activeCount = document.getElementById('activeCount');
-        const eliminatedCount = document.getElementById('eliminatedCount');
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const confettiContainer = document.getElementById('confettiContainer');
-        const eliminationSound = document.getElementById('eliminationSound');
+        const competitionData = {
+            "team1": {
+                "eliminated": true,
+                "eliminatedAt": 1753793222720,
+                "lastUpdated": 1753793222719,
+                "minusCount": 3,
+                "minuses": 3,
+                "name": "1",
+                "rname": "Darul Hasanath Kannadipparamb",
+                "score": 3,
+                "status": "out"
+            },
+            "team10": {
+                "eliminated": true,
+                "eliminatedAt": 1753799999999,
+                "lastUpdated": 1753799318803,
+                "minusCount": 1,
+                "minuses": 0,
+                "name": "10",
+                "rname": "NHIA Pattambi",
+                "score": 3,
+                "status": "active"
+            },
+            "team11": {
+                "eliminated": true,
+                "eliminatedAt": 1753770281506,
+                "lastUpdated": 1753770281506,
+                "minusCount": 3,
+                "minuses": 3,
+                "name": "11",
+                "rname": "Al Ansar Arabic College",
+                "score": 0,
+                "status": "out"
+            },
+            "team12": {
+                "eliminated": true,
+                "eliminatedAt": 1753797854657,
+                "lastUpdated": 1753797854656,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "12",
+                "rname": "DHIU Chemmad",
+                "score": 0,
+                "status": "active"
+            },
+            "team13": {
+                "eliminated": true,
+                "eliminatedAt": 1753785386658,
+                "lastUpdated": 1753785386657,
+                "minusCount": 3,
+                "minuses": 3,
+                "name": "13",
+                "rname": "Al Ansar Arabic College",
+                "score": 0,
+                "status": "out"
+            },
+            "team14": {
+                "eliminated": true,
+                "eliminatedAt": 1753799719198,
+                "lastUpdated": 1753799719196,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "14",
+                "rname": "Shaikh Fareed Auliya Odamala",
+                "score": 0,
+                "status": "active"
+            },
+            "team15": {
+                "eliminated": true,
+                "eliminatedAt": 1753794083221,
+                "lastUpdated": 1753794083220,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "15",
+                "rname": "SHIC Parappur",
+                "score": 0,
+                "status": "active"
+            },
+            "team17": {
+                "eliminated": true,
+                "eliminatedAt": 1753794193122,
+                "lastUpdated": 1753794193122,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "17",
+                "rname": "Al Hasanath Mampuzha",
+                "score": 0,
+                "status": "active"
+            },
+            "team18": {
+                "eliminated": true,
+                "eliminatedAt": 1753789376116,
+                "lastUpdated": 1753789376116,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "18",
+                "rname": "Maunathul Islam Arabic College",
+                "score": 0,
+                "status": "active"
+            },
+            "team19": {
+                "eliminated": true,
+                "eliminatedAt": 1753782262442,
+                "lastUpdated": 1753782262442,
+                "minusCount": 3,
+                "minuses": 1,
+                "name": "19",
+                "rname": "KMIC Theyyotichira",
+                "score": 0,
+                "status": "active"
+            },
+            "team2": {
+                "eliminated": true,
+                "eliminatedAt": 1753785638096,
+                "lastUpdated": 1753785638096,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "2",
+                "rname": "Anwariyya Arabic College Pottachira",
+                "score": 0,
+                "status": "active"
+            },
+            "team20": {
+                "eliminated": true,
+                "eliminatedAt": 1753770281506,
+                "lastUpdated": 1753770281506,
+                "minusCount": 3,
+                "minuses": 3,
+                "name": "20",
+                "rname": "Tharbiya Kaithakkad",
+                "score": 0,
+                "status": "out"
+            },
+            "team21": {
+                "eliminated": true,
+                "eliminatedAt": 1753794958404,
+                "lastUpdated": 1753794958404,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "21",
+                "rname": "DHIU SS Institute Chemmad",
+                "score": 0,
+                "status": "active"
+            },
+            "team22": {
+                "eliminated": true,
+                "eliminatedAt": 1753791700149,
+                "lastUpdated": 1753791700148,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "22",
+                "rname": "SIA Vakery",
+                "score": 0,
+                "status": "active"
+            },
+            "team23": {
+                "eliminated": true,
+                "eliminatedAt": 1753780886995,
+                "lastUpdated": 1753780886994,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "23",
+                "rname": "Sayyid Muhammed Pazhamallur",
+                "score": 0,
+                "status": "active"
+            },
+            "team24": {
+                "eliminated": true,
+                "eliminatedAt": 1753793038050,
+                "lastUpdated": 1753793038049,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "24",
+                "rname": "Darussalam Nandi",
+                "score": 0,
+                "status": "active"
+            },
+            "team25": {
+                "eliminated": true,
+                "eliminatedAt": 1753784053752,
+                "lastUpdated": 1753784053751,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "25",
+                "rname": "DNIC Vallapuzha",
+                "score": 0,
+                "status": "active"
+            },
+            "team26": {
+                "eliminated": true,
+                "eliminatedAt": 1753795029541,
+                "lastUpdated": 1753795029541,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "26",
+                "rname": "NHIA Pattambi",
+                "score": 0,
+                "status": "active"
+            },
+            "team27": {
+                "eliminated": true,
+                "eliminatedAt": 1753799119459,
+                "lastUpdated": 1753799119459,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "27",
+                "rname": "DHIU PG Chemmad",
+                "score": 0,
+                "status": "active"
+            },
+            "team3": {
+                "eliminated": true,
+                "eliminatedAt": 1753774212136,
+                "lastUpdated": 1753774212136,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "3",
+                "rname": "Darul Quran Abdulla Academy",
+                "score": 0,
+                "status": "active"
+            },
+            "team4": {
+                "eliminated": true,
+                "eliminatedAt": 1753772088181,
+                "lastUpdated": 1753772088181,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "4",
+                "rname": "Markaz Saqafath Kundoor",
+                "score": 0,
+                "status": "active"
+            },
+            "team5": {
+                "eliminated": true,
+                "eliminatedAt": 1753793435186,
+                "lastUpdated": 1753793435186,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "5",
+                "rname": "Ma'dinul Uloom Thazhekkod",
+                "score": 0,
+                "status": "active"
+            },
+            "team6": {
+                "eliminated": true,
+                "eliminatedAt": 1753785005120,
+                "lastUpdated": 1753785005119,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "6",
+                "rname": "Darul Hasanath Kannadipparamb",
+                "score": 0,
+                "status": "active"
+            },
+            "team7": {
+                "eliminated": true,
+                "eliminatedAt": 1753773370708,
+                "lastUpdated": 1753773370707,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "7",
+                "rname": "Darunnajath Konancheri",
+                "score": 0,
+                "status": "active"
+            },
+            "team8": {
+                "eliminated": true,
+                "eliminatedAt": 1753774287889,
+                "lastUpdated": 1753774287889,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "8",
+                "rname": "Markaz Saqafath Kundoor",
+                "score": 0,
+                "status": "active"
+            },
+            "team9": {
+                "eliminated": true,
+                "eliminatedAt": 1753799123755,
+                "lastUpdated": 1753799123755,
+                "minusCount": 3,
+                "minuses": 0,
+                "name": "9",
+                "rname": "DNIC Vallapuzha",
+                "score": 0,
+                "status": "active"
+            }
+        };
 
-        // State
-        let teams = {};
-        let isDarkMode = localStorage.getItem('darkMode') === 'true';
-
-        // Initialize dark mode
-        if (isDarkMode) {
-            document.body.classList.add('dark-mode');
-            darkModeToggle.textContent = '☀️';
+        function formatDateTime(timestamp) {
+            return new Date(timestamp).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
         }
 
-        // Dark mode toggle
-        darkModeToggle.addEventListener('click', () => {
-            isDarkMode = !isDarkMode;
-            document.body.classList.toggle('dark-mode');
-            darkModeToggle.textContent = isDarkMode ? '☀️' : '🌙';
-            localStorage.setItem('darkMode', isDarkMode);
-        });
-
-        // Create confetti effect
-        function createConfetti() {
-
-
-            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
-
-            for (let i = 0; i < 50; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti-piece';
-
-                // Big and random sizes
-                const size = Math.random() * 20 + 20; // Between 20px and 40px
-                confetti.style.width = size + 'px';
-                confetti.style.height = size + 'px';
-
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.top = '-30px';
-                confetti.style.animationDelay = Math.random() * 2 + 's';
-                confetti.style.animationDuration = (Math.random() * 3 + 3) + 's';
-
-                confettiContainer.appendChild(confetti);
-
-                setTimeout(() => {
-                    confetti.remove();
-                }, 7000);
+        function getMedalEmoji(rank) {
+            switch(rank) {
+                case 1: return '🥇';
+                case 2: return '🥈';
+                case 3: return '🥉';
+                default: return '';
             }
         }
 
+        function getPodiumClass(rank) {
+            switch(rank) {
+                case 1: return 'podium first';
+                case 2: return 'podium second';
+                case 3: return 'podium third';
+                default: return '';
+            }
+        }
 
-        // Render teams
-        function renderTeams() {
-            teamsGrid.innerHTML = '';
-            let activeTeams = 0;
-            let eliminatedTeams = 0;
+        function generateLeaderboard() {
+            // Convert object to array and sort by eliminatedAt (descending - latest first)
+            const sortedTeams = Object.entries(competitionData)
+                .map(([key, team]) => ({ id: key, ...team }))
+                .sort((a, b) => b.eliminatedAt - a.eliminatedAt);
 
-            Object.entries(teams).forEach(([teamId, team]) => {
-                const teamCard = document.createElement('div');
-                teamCard.className = `team-card ${team.eliminated ? 'eliminated' : ''}`;
-                teamCard.id = `team-${teamId}`;
-
-                const minusPoints = Array(3).fill(0).map((_, i) =>
-                    `<span class="minus-point ${i < team.minusCount ? 'active' : ''}">${i < team.minusCount ? '✕' : '○'}</span>`
-                ).join('');
-
-                teamCard.innerHTML = `
-                    <div class="team-header">
-                        <h3 class="team-name">Team ${team.name}</h3>
-                        
-                        ${team.eliminated ? '<span class="eliminated-badge">ELIMINATED</span>' : ''}
-                    </div>
-                    <span class="team-rname">${team.rname}</span>
-                    <div class="minus-points">
-                        ${minusPoints}
-                    </div>
-                    <div class="team-status">
-                        ${team.eliminated ? 'Out of competition' : `${3 - team.minusCount} strikes remaining`}
+            const leaderboardHTML = sortedTeams.map((team, index) => {
+                const rank = index + 1;
+                const medal = getMedalEmoji(rank);
+                const podiumClass = getPodiumClass(rank);
+                
+                return `
+                    <div class="rank-item ${podiumClass}">
+                        ${medal ? `<div class="medal">${medal}</div>` : ''}
+                        <div class="rank-number">${rank}</div>
+                        <div class="team-info">
+                            <div class="team-name">${team.rname}</div>
+                            <div class="team-institution">Code number : ${team.name}</div>
+                            <div class="team-details">
+                                <div class="detail-item">
+                                    <span class="elimination-time">
+                                        🕒 ${formatDateTime(team.eliminatedAt)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
+            }).join('');
 
-                teamsGrid.appendChild(teamCard);
-
-                if (team.eliminated) {
-                    eliminatedTeams++;
-                } else {
-                    activeTeams++;
-                }
-            });
-
-            // Update counters
-            activeCount.textContent = `${activeTeams} Teams Active`;
-            eliminatedCount.textContent = `${eliminatedTeams} Eliminated`;
+            document.getElementById('leaderboard').innerHTML = leaderboardHTML;
         }
 
-        // Animate team card on minus point
-        function animateMinusPoint(teamId) {
-            const teamCard = document.getElementById(`team-${teamId}`);
-            if (teamCard) {
-                teamCard.classList.add('shake');
-                setTimeout(() => {
-                    teamCard.classList.remove('shake');
-                }, 600);
-            }
-        }
-
-        // Animate elimination
-        function animateElimination(teamId) {
-            const teamCard = document.getElementById(`team-${teamId}`);
-            if (teamCard) {
-                teamCard.classList.add('eliminating');
-                setTimeout(() => {
-                    teamCard.classList.remove('eliminating');
-                    teamCard.classList.add('eliminated');
-                    // Play sound and confetti
-                    eliminationSound.play().catch(() => { });
-                }, 500);
-            }
-        }
-
-        // Initialize Firebase listeners
-        initializeApp();
-
-        // Listen for team data changes
-        const teamsRef = firebase.database().ref('teams');
-        teamsRef.on('value', (snapshot) => {
-            const newTeams = snapshot.val() || {};
-
-            // Check for new eliminations
-            Object.keys(newTeams).forEach(teamId => {
-                const oldTeam = teams[teamId];
-                const newTeam = newTeams[teamId];
-
-                if (oldTeam && newTeam) {
-                    // Check if minus count increased
-                    if (newTeam.minusCount > oldTeam.minusCount) {
-                        animateMinusPoint(teamId);
-                    }
-
-                    // Check if team was eliminated
-                    if (!oldTeam.eliminated && newTeam.eliminated) {
-                        setTimeout(() => {
-                            animateElimination(teamId);
-                        }, 300);
-                    }
-                }
-            });
-
-            teams = newTeams;
-            renderTeams();
-        });
-
-        // Initialize teams if database is empty
-        teamsRef.once('value', (snapshot) => {
-            if (!snapshot.exists()) {
-                const initialTeams = {};
-                for (let i = 0; i < 26; i++) {
-                    const teamId = String.fromCharCode(65 + i);
-                    initialTeams[teamId] = {
-                        name: `Team ${teamId}`,
-                        minusCount: 0,
-                        eliminated: false,
-                        createdAt: Date.now()
-                    };
-                }
-                teamsRef.set(initialTeams);
-            }
-        });
+        // Initialize leaderboard when page loads
+        document.addEventListener('DOMContentLoaded', generateLeaderboard);
     </script>
 </body>
-
 </html>
